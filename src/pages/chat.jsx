@@ -1,8 +1,18 @@
 // src/pages/chat.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function Chat() {
   const currentLang = localStorage.getItem('user_language') || 'de';
+
+  // Sprachcodes für die Browser-API
+  const bcp47Languages = {
+    de: 'de-DE',
+    tr: 'tr-TR',
+    ru: 'ru-RU',
+    ar: 'ar-SA',
+    pl: 'pl-PL',
+    en: 'en-US'
+  };
 
   // States
   const [messages, setMessages] = useState([]);
@@ -12,6 +22,7 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false);
 
   const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   // Übersetzungen
   const texts = {
@@ -30,6 +41,14 @@ export default function Chat() {
       ar: "اكتب رسالة...",
       pl: "Napisz wiadomość...",
       en: "Type a message..."
+    },
+    listening: {
+      de: "Ich höre zu... Bitte sprechen",
+      tr: "Dinliyorum... Lütfen konuşun",
+      ru: "Слушаю... Говорите",
+      ar: "أستمع... يرجى التحدث",
+      pl: "Słucham... Mów teraz",
+      en: "Listening... Please speak"
     },
     modalTitle: {
       de: "Dokument überprüfen",
@@ -67,14 +86,63 @@ export default function Chat() {
 
   const t = (obj) => (obj && obj[currentLang]) || (obj && obj.de) || '';
 
-  // Bildauswahl triggern
+  // Initialisierung der Web Speech API
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false; // Stoppt automatisch bei Sprechpause
+      recognition.interimResults = false;
+      recognition.lang = bcp47Languages[currentLang] || 'de-DE';
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInputText((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Spracherkennungsfehler:", event.error);
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, [currentLang]);
+
+  // Mikrofon starten / stoppen
+  const toggleRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Dein Browser unterstützt keine direkte Spracherkennung. Bitte Google Chrome oder Safari nutzen.");
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsRecording(true);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  // --- BILD- & CHAT-HANDLING ---
   const handleAttachClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Datei verarbeiten und Pop-up öffnen
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -84,17 +152,14 @@ export default function Chat() {
     }
   };
 
-  // Bestätigung im Pop-up
   const handleConfirmImage = () => {
     setIsModalOpen(false);
-    // Bild direkt als Nachricht in den Chat einfügen
     setMessages((prev) => [
       ...prev,
       { id: Date.now(), type: 'image', content: selectedImage, sender: 'user' }
     ]);
   };
 
-  // Abbruch im Pop-up
   const handleCancelImage = () => {
     setIsModalOpen(false);
     setSelectedImage(null);
@@ -103,7 +168,6 @@ export default function Chat() {
     }
   };
 
-  // Textnachricht absenden
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
     setMessages((prev) => [
@@ -203,7 +267,7 @@ export default function Chat() {
         style={{ display: 'none' }}
       />
 
-      {/* UNTERE EINGABELEISTE (über dem Footer platziert) */}
+      {/* UNTERE EINGABELEISTE */}
       <div style={{
         position: 'fixed',
         bottom: '84px',
@@ -219,18 +283,20 @@ export default function Chat() {
           backgroundColor: '#F8FAFC',
           borderRadius: '24px',
           padding: '6px 12px',
-          border: '1px solid #CBD5E1',
+          border: isRecording ? '1.5px solid #EF4444' : '1px solid #CBD5E1',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-          gap: '8px'
+          gap: '8px',
+          transition: 'border 0.2s ease'
         }}>
-          {/* Linker Foto-/Anhang-Button */}
+          {/* Linker Foto-Button */}
           <button
             type="button"
             onClick={handleAttachClick}
+            disabled={isRecording}
             style={{
               background: 'none',
               border: 'none',
-              cursor: 'pointer',
+              cursor: isRecording ? 'not-allowed' : 'pointer',
               color: '#64748B',
               display: 'flex',
               alignItems: 'center',
@@ -261,14 +327,14 @@ export default function Chat() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder={t(texts.placeholder)}
+            placeholder={isRecording ? t(texts.listening) : t(texts.placeholder)}
             style={{
               flex: 1,
               border: 'none',
               backgroundColor: 'transparent',
               outline: 'none',
               fontSize: '14px',
-              color: '#1E293B',
+              color: isRecording ? '#EF4444' : '#1E293B',
               padding: '8px 0'
             }}
           />
@@ -276,7 +342,7 @@ export default function Chat() {
           {/* Rechter Mikrofon-Button */}
           <button
             type="button"
-            onClick={() => setIsRecording(!isRecording)}
+            onClick={toggleRecording}
             style={{
               background: isRecording ? '#EF4444' : 'none',
               border: 'none',
@@ -285,19 +351,20 @@ export default function Chat() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '6px',
+              padding: '8px',
               borderRadius: '50%',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              boxShadow: isRecording ? '0 0 10px rgba(239, 68, 68, 0.5)' : 'none'
             }}
-            title="Mikrofon"
+            title={isRecording ? "Aufnahme stoppen" : "Aufnahme starten"}
           >
             <svg
-              width="22"
-              height="22"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
             >

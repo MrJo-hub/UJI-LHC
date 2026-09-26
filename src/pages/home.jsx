@@ -5,6 +5,12 @@ export default function Home({ onNavigate }) {
   const currentLang = localStorage.getItem('user_language') || 'de';
   const currentLevel = localStorage.getItem('user_level') || 'mittel';
 
+  // Guthaben-State (aus localStorage oder Fallback 15.00)
+  const [balance, setBalance] = useState(() => {
+    const savedBalance = localStorage.getItem('user_balance');
+    return savedBalance !== null ? parseFloat(savedBalance) : 15.0;
+  });
+
   // States für Bild und Modal
   const [selectedImage, setSelectedImage] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +65,22 @@ export default function Home({ onNavigate }) {
       ar: "الانتقال إلى الدردشة",
       pl: "Przejdź do czatu",
       en: "Go to chat"
+    },
+    balanceLabel: {
+      de: "Verfügbares Guthaben",
+      tr: "Kullanılabilir Bakiye",
+      ru: "Доступный баланс",
+      ar: "الرصيد المتاح",
+      pl: "Dostępne środki",
+      en: "Available Balance"
+    },
+    topUpBtn: {
+      de: "Aufladen",
+      tr: "Yükle",
+      ru: "Пополнить",
+      ar: "شحن الرصيد",
+      pl: "Doładuj",
+      en: "Top up"
     },
     modalTitle: {
       de: "Dokument überprüfen",
@@ -132,14 +154,12 @@ export default function Home({ onNavigate }) {
 
   const t = (obj) => (obj && obj[currentLang]) || (obj && obj.de) || '';
 
-  // Öffnet Datei-Dialog
   const handleBoxClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Wird aufgerufen, sobald eine Datei gewählt wird
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -149,17 +169,21 @@ export default function Home({ onNavigate }) {
     }
   };
 
-  // Aktion wenn Nutzer im Pop-up auf "Weiter" klickt
   const handleConfirm = () => {
     setIsModalOpen(false);
     onNavigate('chat');
   };
 
-  // Aktion wenn Nutzer abbricht
   const handleCancel = () => {
     setIsModalOpen(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleTopUp = () => {
+    if (onNavigate) {
+      onNavigate('profile');
     }
   };
 
@@ -231,7 +255,7 @@ export default function Home({ onNavigate }) {
           borderRadius: '12px',
           padding: '16px',
           border: '1px solid #E2E8F0',
-          marginBottom: '24px'
+          marginBottom: '20px'
         }}>
           <p style={{ margin: '8px 0', color: '#334155' }}>
             {t(texts.langLabel)}: <strong>{languageNames[currentLang] ? t(languageNames[currentLang]) : currentLang}</strong>
@@ -338,11 +362,103 @@ export default function Home({ onNavigate }) {
             cursor: 'pointer',
             width: '100%',
             boxShadow: '0 4px 10px rgba(30, 41, 59, 0.2)',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            marginBottom: '16px'
           }}
         >
           {t(texts.chatBtn)} →
         </button>
+
+        {/* KONTOSTAND & GUTHABEN-KASTEN (VISUELL HERVORGEHOBEN) */}
+        <div style={{
+          background: 'linear-gradient(135deg, #F0FDF4 0%, #E0F2FE 100%)',
+          borderRadius: '16px',
+          padding: '18px 20px',
+          border: '1.5px solid #BAE6FD',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          boxShadow: '0 4px 14px rgba(2, 132, 199, 0.08)',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {/* Wallet-Icon Badge */}
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              backgroundColor: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
+              color: '#0284C7',
+              flexShrink: 0
+            }}>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="2" y="4" width="20" height="16" rx="3" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+                <circle cx="17" cy="15" r="1.2" fill="currentColor" />
+              </svg>
+            </div>
+
+            {/* Text & Betrag */}
+            <div>
+              <span style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '0.6px',
+                color: '#0369A1',
+                marginBottom: '2px'
+              }}>
+                {t(texts.balanceLabel)}
+              </span>
+              <span style={{
+                fontSize: '26px',
+                fontWeight: '800',
+                color: '#0F172A',
+                letterSpacing: '-0.5px'
+              }}>
+                {balance.toFixed(2)} <span style={{ fontSize: '18px', fontWeight: '700', color: '#0284C7' }}>€</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Auffälliger Auflade-Button */}
+          <button
+            type="button"
+            onClick={handleTopUp}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#0284C7',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 10px rgba(2, 132, 199, 0.25)',
+              flexShrink: 0
+            }}
+          >
+            <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
+            <span>{t(texts.topUpBtn)}</span>
+          </button>
+        </div>
       </div>
 
       {/* POP-UP FENSTER (MODAL) */}

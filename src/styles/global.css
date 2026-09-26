@@ -1,0 +1,13 @@
+#root {
+    width: 390px;
+    min-height: 100vh;
+    background: #ffffff;
+}
+body {
+    background: black;
+    width: 100vw;
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

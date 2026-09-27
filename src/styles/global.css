@@ -2,6 +2,10 @@
     width: 390px;
     min-height: 100vh;
     background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2.5vh 0;
 }
 body {
     background: black;

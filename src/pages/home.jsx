@@ -1,14 +1,19 @@
 // src/pages/home.jsx
 import React, { useState, useRef } from 'react';
+import logoIcon from '../icons/icon.png';
 
 export default function Home({ onNavigate }) {
   const currentLang = localStorage.getItem('user_language') || 'de';
   const currentLevel = localStorage.getItem('user_level') || 'mittel';
 
-  // Guthaben-State (aus localStorage oder Fallback 15.00)
-  const [balance, setBalance] = useState(() => {
+  // Punkte-/Guthaben-State (z. B. 15.00 € entsprechen 150 Hilfepunkten)
+  const [tokens, setTokens] = useState(() => {
+    const savedTokens = localStorage.getItem('user_tokens');
+    if (savedTokens !== null) return parseInt(savedTokens, 10);
+    
+    // Fallback: Aus altem Euro-Balance umrechnen oder Standard 12 Punkte vergeben
     const savedBalance = localStorage.getItem('user_balance');
-    return savedBalance !== null ? parseFloat(savedBalance) : 15.0;
+    return savedBalance !== null ? Math.round(parseFloat(savedBalance) * 10) : 12;
   });
 
   // States für Bild und Modal
@@ -66,21 +71,29 @@ export default function Home({ onNavigate }) {
       pl: "Przejdź do czatu",
       en: "Go to chat"
     },
-    balanceLabel: {
-      de: "Verfügbares Guthaben",
-      tr: "Kullanılabilir Bakiye",
-      ru: "Доступный баланс",
-      ar: "الرصيد المتاح",
-      pl: "Dostępne środki",
-      en: "Available Balance"
+    tokenLabel: {
+      de: "Verfügbares Hilfeguthaben",
+      tr: "Kullanılabilir Yardım Puanı",
+      ru: "Доступные баллы помощи",
+      ar: "نقاط المساعدة المتاحة",
+      pl: "Dostępne punkty pomocy",
+      en: "Available Help Credits"
+    },
+    unitLabel: {
+      de: "Punkte",
+      tr: "Puan",
+      ru: "баллов",
+      ar: "نقطة",
+      pl: "pkt",
+      en: "Points"
     },
     topUpBtn: {
       de: "Aufladen",
       tr: "Yükle",
       ru: "Пополнить",
-      ar: "شحن الرصيد",
+      ar: "شحن",
       pl: "Doładuj",
-      en: "Top up"
+      en: "Add credits"
     },
     modalTitle: {
       de: "Dokument überprüfen",
@@ -137,7 +150,7 @@ export default function Home({ onNavigate }) {
     mittel: {
       de: "Mittel: B1",
       tr: "Orta: B1",
-      ru: "Средне: B1",
+      ru: "Средne: B1",
       ar: "متوسط: B1",
       pl: "Średnio: B1",
       en: "Intermediate: B1"
@@ -197,31 +210,36 @@ export default function Home({ onNavigate }) {
       position: 'relative'
     }}>
 
-      {/* HEADER */}
+      {/* HEADER: GANZ OBEN FIXIERT MIT LOGO-BILD */}
       <header style={{
+        position: 'fixed',
+        top: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '400px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '16px 24px',
-        width: '100%',
+        padding: '0 24px',
         boxSizing: 'border-box',
-        height: '10vh'
+        backgroundColor: '#ffffff',
+        borderBottom: '2px dashed #CBD5E1',
+        zIndex: 50
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '8px',
-            backgroundColor: '#1E293B',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}>
-            ⚖️
-          </div>
+          <img
+            src={logoIcon}
+            alt="UJI Logo"
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              objectFit: 'contain',
+              display: 'block'
+            }}
+          />
 
           <span style={{ fontSize: '20px', fontWeight: '800', color: '#1E293B', letterSpacing: '0.5px' }}>
             UJI
@@ -229,16 +247,12 @@ export default function Home({ onNavigate }) {
         </div>
       </header>
 
-      {/* GESTRICHELTE TRENNLINIE */}
-      <div style={{
-        borderBottom: '2px dashed #CBD5E1',
-        width: '100%'
-      }} />
-
-      {/* BODY-INHALT */}
+      {/* BODY-INHALT MIT PADDING-TOP ZUR AUSGLEICHUNG DES FIXIERTEN HEADERS */}
       <div style={{
         flex: 1,
         padding: '24px',
+        paddingTop: '84px',
+        paddingBottom: '110px',
         maxWidth: '480px',
         width: '100%',
         margin: '0 auto',
@@ -271,7 +285,7 @@ export default function Home({ onNavigate }) {
           type="file" 
           ref={fileInputRef} 
           onChange={handleFileChange} 
-          accept="image/*" 
+          accept="image/*,application/pdf" 
           style={{ display: 'none' }} 
         />
 
@@ -369,7 +383,7 @@ export default function Home({ onNavigate }) {
           {t(texts.chatBtn)} →
         </button>
 
-        {/* KONTOSTAND & GUTHABEN-KASTEN (VISUELL HERVORGEHOBEN) */}
+        {/* HILFEGUTHABEN / PUNKTE-KASTEN (STATT EURO-GELD) */}
         <div style={{
           background: 'linear-gradient(135deg, #F0FDF4 0%, #E0F2FE 100%)',
           borderRadius: '16px',
@@ -382,7 +396,7 @@ export default function Home({ onNavigate }) {
           gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {/* Wallet-Icon Badge */}
+            {/* Punkte-Icon Badge */}
             <div style={{
               width: '46px',
               height: '46px',
@@ -405,13 +419,12 @@ export default function Home({ onNavigate }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <rect x="2" y="4" width="20" height="16" rx="3" />
-                <line x1="2" y1="10" x2="22" y2="10" />
-                <circle cx="17" cy="15" r="1.2" fill="currentColor" />
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
               </svg>
             </div>
 
-            {/* Text & Betrag */}
+            {/* Hilfeguthaben Text & Stand */}
             <div>
               <span style={{
                 display: 'block',
@@ -422,7 +435,7 @@ export default function Home({ onNavigate }) {
                 color: '#0369A1',
                 marginBottom: '2px'
               }}>
-                {t(texts.balanceLabel)}
+                {t(texts.tokenLabel)}
               </span>
               <span style={{
                 fontSize: '26px',
@@ -430,12 +443,12 @@ export default function Home({ onNavigate }) {
                 color: '#0F172A',
                 letterSpacing: '-0.5px'
               }}>
-                {balance.toFixed(2)} <span style={{ fontSize: '18px', fontWeight: '700', color: '#0284C7' }}>€</span>
+                {tokens} <span style={{ fontSize: '15px', fontWeight: '700', color: '#0284C7' }}>{t(texts.unitLabel)}</span>
               </span>
             </div>
           </div>
 
-          {/* Auffälliger Auflade-Button */}
+          {/* Auflade-Button */}
           <button
             type="button"
             onClick={handleTopUp}
@@ -557,11 +570,9 @@ export default function Home({ onNavigate }) {
                 {t(texts.continueBtn)}
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

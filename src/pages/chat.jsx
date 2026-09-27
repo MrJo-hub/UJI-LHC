@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import rawSystemPrompt from '../../server/services/ai/prompts/system-prompt.md?raw';
 import FormWizard from '../components/FormWizard';
 import { generateAndDownloadPdf } from '../utils/pdfGenerator';
+import logoIcon from '../icons/icon.png';
 
 export default function Chat() {
   const currentLang = localStorage.getItem('user_language') || 'de';
@@ -53,12 +54,13 @@ export default function Chat() {
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   function getGreeting(lang) {
     const greetings = {
       de: "Hallo! Ich bin dein Rechts- und Formularassistent UJI. Wie kann ich dir helfen? Du kannst mir Fragen stellen oder ein Dokument (Foto oder PDF) hochladen.",
       tr: "Merhaba! Ben UJI, hukuki ve form asistanınızım. Size nasıl yardımcı olabilirim? Soru sorabilir veya bir belge yükleyebilirsiniz.",
-      ru: "Здравствуйте! Я ваш юридический помощник UJI. Чем я могу помочь? Задайте вопрос или загрузите документ.",
+      ru: "Здравствуйте! Я ваш юридический помощник UJI. Чем я могу помочь? Задайте вопрос oder загрузите документ.",
       ar: "مرحبًا! أنا UJI، مساعدك القانوني للنماذج. كيف يمكنني مساعدتك اليوم؟ يمكنك طرح سؤال أو رفع مستند.",
       pl: "Cześć! Jestem Twoim asystentem UJI. W czym mogę pomóc? Możesz zadać pytanie lub przesłać dokument.",
       en: "Hello! I am your legal assistant UJI. How can I help you today? You can ask a question or upload a document."
@@ -136,9 +138,29 @@ export default function Chat() {
   const t = (obj) => (obj && obj[currentLang]) || (obj && obj.de) || '';
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    window.scrollTo(0, 0);
+    const forceScrollTop = () => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+    };
+    forceScrollTop();
+    const frameId = requestAnimationFrame(forceScrollTop);
+    const timer = setTimeout(forceScrollTop, 50);
 
+    return () => {
+      cancelAnimationFrame(frameId);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (messages.length <= 1 && !isLoading) {
+      return;
+    }
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length, isLoading]);
+  
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -188,7 +210,6 @@ export default function Chat() {
     });
   };
 
-  // --- GEMINI API INTEGRATIO CUM EXEMPLARIBUS ET RETRY ---
   const callGeminiAPI = async (contents, isJsonMode = false) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
@@ -197,11 +218,9 @@ export default function Chat() {
     }
 
     const modelCandidates = [
-      'gemini-3.8-flash',
-      'gemini-3.7-flash',
-      'gemini-3.5-flash',
-      'gemini-3.5-flash-8b',
-      'gemini-3.5-pro'
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro'
     ];
 
     const savedLang = localStorage.getItem('user_language') || 'de';
@@ -218,7 +237,7 @@ export default function Chat() {
 
     const config = {
       temperature: isJsonMode ? 0.1 : 0.3,
-      maxOutputTokens: 4096
+      maxOutputTokens: 8192
     };
 
     if (isJsonMode) {
@@ -416,7 +435,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         throw new Error("Keine gültige Antwort von der KI erhalten.");
       }
 
-      let cleanedJson = rawJson.trim();
+      let cleanedJson = rawJson.replace(/\u00A0/g, ' ').trim();
       if (cleanedJson.startsWith('```')) {
         cleanedJson = cleanedJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       }
@@ -510,50 +529,59 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       backgroundColor: '#ffffff'
     }}>
+      {/* HEADER: GANZ OBEN FIXIERT MIT LOGO-BILD */}
       <header style={{
+        position: 'fixed',
+        top: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '380px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
-        padding: '16px 24px',
-        width: '100%',
+        padding: '0 20px',
         boxSizing: 'border-box',
-        height: '10vh'
+        backgroundColor: '#ffffff',
+        borderBottom: '2px dashed #CBD5E1',
+        zIndex: 50
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '8px',
-            backgroundColor: '#1E293B',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}>
-            ⚖️
-          </div>
+          <img
+            src={logoIcon}
+            alt="UJI Logo"
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              objectFit: 'contain',
+              display: 'block'
+            }}
+          />
           <span style={{ fontSize: '20px', fontWeight: '800', color: '#1E293B' }}>
             {t(texts.headerTitle)}
           </span>
         </div>
       </header>
 
-      <div style={{ borderBottom: '2px dashed #CBD5E1', width: '100%' }} />
-
-      <div style={{
-        flex: 1,
-        padding: '16px 20px',
-        maxWidth: '380px',
-        width: '100%',
-        margin: '0 auto',
-        boxSizing: 'border-box',
-        overflowY: 'auto',
-        paddingBottom: '160px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}>
+      {/* CHATVERLAUF */}
+      <div
+        ref={scrollContainerRef}
+        style={{
+          flex: 1,
+          padding: '16px 20px',
+          paddingTop: '80px',
+          paddingBottom: '160px',
+          maxWidth: '380px',
+          width: '100%',
+          margin: '0 auto',
+          boxSizing: 'border-box',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -614,6 +642,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         <div ref={chatBottomRef} />
       </div>
 
+      {/* DATEI-UPLOAD */}
       <input
         type="file"
         ref={fileInputRef}
@@ -622,6 +651,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         style={{ display: 'none' }}
       />
 
+      {/* EINGABELEISTE */}
       <div style={{
         position: 'fixed',
         bottom: '84px',
@@ -709,6 +739,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         </div>
       </div>
 
+      {/* POP-UP MODAL */}
       {isModalOpen && (
         <div style={{
           position: 'fixed',
